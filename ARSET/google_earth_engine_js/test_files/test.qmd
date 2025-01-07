@@ -1,0 +1,118 @@
+---
+title: "ARSET - Spectral Indices for Land and Aquatic Applications"
+output: html_document
+jupyter: gee_env
+---
+# ARSET - Spectral Indices for Land and Aquatic Applications
+## Google Earth Engine JavaScript Work Around
+[Educational resource with source code links.](https://appliedsciences.nasa.gov/get-involved/training/english/arset-spectral-indices-land-and-aquatic-applications)
+
+##### Citation
+```
+(2023). ARSET - Spectral Indices for Land and Aquatic Applications. NASA Applied Remote Sensing Training Program (ARSET). http://appliedsciences.nasa.gov/get-involved/training/english/arset-spectral-indices-land-and-aquatic-applications
+```
+Author: Sofia Ingersoll
+
+Date: 6 Jan 2025
+
+
+```{js, map_base}
+// Create a title for the map window
+var title = ui.Label({
+    value: 'Part 1: Exploring NDVI',
+    style:{
+    fontWeight: 'bold',
+    fontSize: '18px'
+    }});
+  title.style().set('position', 'top-center');
+  Map.add(title);
+```
+
+```{js, roi_defined}
+//***************************************************************
+//  PART 1: CALCULATE NDVI OVER REAL DE SALINAS, MEXICO WITH LANDSAT 9
+//***************************************************************
+
+// Define the region of interest (ROI)
+var roi_1 = geometry; //If you want to change your own region of interest, change it from "geometry" on this line.
+
+// Create functions for Landsat 9 Collection 2 scale factors and cloud masking
+// Create scale factor function for Landsat 9 Collection 2. More info here: https://www.usgs.gov/faqs/how-do-i-use-scale-factor-landsat-level-2-science-products 
+function applyScaleFactors(image) {
+  var opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2);
+  var thermalBands = image.select('ST_B.*').multiply(0.00341802).add(149.0);
+  return image.addBands(opticalBands, null, true)
+              .addBands(thermalBands, null, true);
+}
+```
+
+```{js, mask_by_pixel_quality}
+// Create cloud mask function to mask clouds from the pixel quality band of Landsat 9 SR data
+function maskL9sr(image) {
+  var cloudBitMask = 1 << 3;
+  var cloudShadowBitMask = 1 << 4;
+  // Get the pixel QA band.
+  var qa = image.select('QA_PIXEL');
+  // All flags should be set to zero, indicating clear conditions.
+  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
+      .and(qa.bitwiseAnd(cloudShadowBitMask).eq(0));
+  // Return the masked image, scaled to TOA reflectance, without the QA bands.
+  return image.updateMask(mask)
+      .select("SR_B[0-7]*")
+      .copyProperties(image, ["system:time_start"]);
+}
+```
+
+```{js, load_&_clip_data}
+// Load L9 data, filter by date and our region of interest, apply the scale factor and cloud mask, and reduce to an image by median value
+var L9 = ee.ImageCollection("LANDSAT/LC09/C02/T1_L2")
+    .filterDate('2022-07-01', '2022-07-31')
+    .filterBounds(roi_1)
+    .map(applyScaleFactors)
+    .map(maskL9sr)
+    .median();
+
+// Use the variable roi_1 to clip L9 imagery to the geometry drawn over Real De Salinas
+var rds = L9.clip(roi_1); 
+```
+
+```{js, calculate_NVDI}
+// Calculate NDVI over our region of interest
+// NDVI = (NIR - R) / (NIR + R)
+// Landsat 9 bands: SR_B5 is NIR, SR_B4 is Red
+var L9NDVI = rds.normalizedDifference(['SR_B5', 'SR_B4']);
+
+```
+
+```{js, color_aes}
+// Set visual parameters
+var ndviVis = {min: -1, max: 1, palette: ['white', 'green']}; // Change min and max based on printed values
+
+```
+
+```{js, adding_map_layer}
+// Add Landsat 9 NDVI to the map as a layer
+Map.addLayer(L9NDVI, ndviVis, 'Landsat 9 NDVI');
+
+```
+
+```{js, map_placement_zoom}
+// Set the center object for the map as the roi NDVI and set the zoom layer to 12
+Map.centerObject(L9NDVI, 12);
+
+```
+
+```{js, dis}
+// Print the minimum and maximum NDVI values in the roi
+var minMax = L9NDVI.reduceRegion({
+    reducer: ee.Reducer.minMax(),
+    geometry: geometry,
+    scale: 30,
+    //maxPixels: 1e10
+});
+
+print('Min & Max Real De Salinas (L9) NDVI: ', minMax);
+
+```
+
+

@@ -1,0 +1,10 @@
+#!/bin/sh
+'''exec' "/Users/sofiaingersoll/1/Career_Development/application goodies/accepted!/DEVELOP SP25/NASA_JPL_presession_gis_training/gee_env/bin/python" "$0" "$@"
+' '''
+# -*- coding: utf-8 -*-
+import re
+import sys
+from jupyter_client.kernelspecapp import KernelSpecApp
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(KernelSpecApp.launch_instance())
