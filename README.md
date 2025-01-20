@@ -1,4 +1,4 @@
-# NASA JPL Pre-session GIS Training
+# Analytics Mechanics Association (AMA) DEVELOP @ NASA JPL Pre-session GIS Training
 
 ### Greetings and welcome to my educational repository!
 
